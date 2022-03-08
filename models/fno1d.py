@@ -62,19 +62,19 @@ class FNO1d(nn.Module):
         '''
         length = len(self.ws)
         batchsize = x.shape[0]
-        size_x, size_y = x.shape[1], x.shape[2]
+        size_x = x.shape[1]
 
         x = self.fc0(x)
-        x = x.permute(0, 3, 1, 2)
+        x = x.permute(0, 2, 1)
 
         for i, (speconv, w) in enumerate(zip(self.sp_convs, self.ws)):
             x1 = speconv(x)
             x2 = w(x.view(
-                batchsize, self.layers[i], -1)).view(batchsize, self.layers[i+1], size_x, size_y)
+                batchsize, self.layers[i], -1)).view(batchsize, self.layers[i+1], size_x)
             x = x1 + x2
             if i != length - 1:
                 x = self.activation(x)
-        x = x.permute(0, 2, 3, 1)
+        x = x.permute(0, 2, 1)
         x = self.fc1(x)
         x = self.activation(x)
         x = self.fc2(x)

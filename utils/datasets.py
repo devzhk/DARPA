@@ -12,9 +12,9 @@ class PointJet1D(Dataset):
     def __init__(self, closure_path, omega_path, num_chop=15):
         super(PointJet1D, self).__init__()
         closure = self.loadmat(closure_path, key='data_closure')
-        self.closure = closure[num_chop:-num_chop, :]
+        self.closure = closure[num_chop+1:-num_chop, :]
         omega = self.loadmat(omega_path, key='data_w')
-        self.omega = omega[num_chop:-num_chop, :]
+        self.omega = omega[num_chop+1:-num_chop, :]
 
     def __getitem__(self, idx):
         return self.omega[:, idx], self.closure[:, idx]
