@@ -1,43 +1,69 @@
-import scipy.ndimage
-import numpy as np
-from utils.helper import load_data
+from tqdm import tqdm
+import torch
+import torch.nn as nn
 
-N_y = 384
-beta = 1.0
-tau_inv = [0.01, 0.02, 0.04, 0.08, 0.16]
+from utils.cadam import Adam
+from torch.optim.lr_scheduler import MultiStepLR
+from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
-def preprocess(N_y, beta, tau_inv):
-    data_dirs = ["../data/beta_1.0_Gamma_1.0_relax_" + str(tau_inv[i]) + "/" for i in range(len(tau_inv))]
+from models import FNO1d
+from utils.datasets import PointJet
 
-    N_data = len(data_dirs)
-    closure_mean, q_mean, dq_dy_mean = np.zeros((N_data, N_y)), np.zeros((N_data, N_y)), np.zeros((N_data, N_y))
-    for i in range(N_data):
-        closure_mean[i, :], q_mean[i, :], dq_dy_mean[i, :] = load_data(data_dirs[i])
 
-    L = 4 * np.pi
-    yy = np.linspace(-L / 2.0, L / 2.0, N_y)
-    dy = yy[1] - yy[0]
+def train(dataloader, model, optimizer, scheduler, device=None):
+    if device is None:
+        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # hyperparameters
+    num_pad = 5
+    num_epoch = 2000
+    # training
+    pbar = tqdm(range(num_epoch), dynamic_ncols=True, smoothing=0.1)
+    criterion = nn.MSELoss()
 
-    omega_jet = np.zeros(N_y)
-    omega_jet[0:N_y // 2] = 1.0
-    omega_jet[N_y // 2:N_y] = -1.0
-    q_jet = omega_jet + beta * yy
+    for e in pbar:
+        train_loss = 0
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
+            optimizer.zero_grad()
 
-    # TODO: clean data
-    chop_l = 50
-    for i in range(N_data):
-        q_mean[i, 0:chop_l] = np.linspace(q_jet[0], q_mean[i, chop_l - 1], chop_l)  # q_jet[0:chop_l]
-        q_mean[i, -chop_l:] = np.linspace(q_mean[i, -chop_l], q_jet[-1], chop_l)  # q_jet[-chop_l:]
-        dq_dy_mean[i, 0:chop_l] = np.linspace(beta, dq_dy_mean[i, chop_l - 1], chop_l)
-        dq_dy_mean[i, -chop_l:] = np.linspace(dq_dy_mean[i, -chop_l], beta, chop_l)
+            pred = model(x.unsqueeze(-1))
+            loss = criterion(pred.squeeze(-1), y)
 
-    q_mean_abs = np.fabs(q_mean)
-    mu_f = closure_mean / dq_dy_mean
+            loss.backward()
+            optimizer.step()
 
-    # TODO: clip and filter the data
-    mu_f[mu_f >= 0.1] = 0.0
-    mu_f[mu_f <= 0.0] = 0.0
-    for i in range(N_data):
-        mu_f[i, :] = scipy.ndimage.gaussian_filter1d(mu_f[i, :], 5)
-    return closure_mean, q_mean, yy, dq_dy_mean, mu_f
+            train_loss += loss.item()
+        scheduler.step()
+        avg_loss = train_loss / len(dataloader)
+        pbar.set_description(
+            (
+                f'Epoch {e}: avg loss : {avg_loss}'
+            )
+        )
+            # q_pad = F.pad(x, (0, num_pad), 'constant', 0)
+            # pred_pad = model(q_pad)
+    torch.save(model.state_dict(), f'ckpts/fno1d-nopad-final.pt')
+
+
+if __name__ == '__main__':
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # training parameter
+    batchsize = 1
+
+    N_y = 384
+    beta = 1.0
+    tau_inv = [0.01, 0.02, 0.04, 0.08, 0.16]
+    dataset = PointJet(N_y, beta, tau_inv)
+    dataloader = DataLoader(dataset, batch_size=batchsize, shuffle=True)
+
+    layers = [32, 32]
+    modes1 = [12, 12]
+    fc_dim = 32
+    model = FNO1d(modes1=modes1, layers=layers,
+                  fc_dim=fc_dim, in_dim=1, activation='tanh').to(device)
+    optimizer = Adam(model.parameters(), lr=1e-3)
+    scheduler = MultiStepLR(optimizer, milestones=[300, 600, 900, 1200, 1500], gamma=0.5)
+
+    train(dataloader, model, optimizer, scheduler, device=device)
 

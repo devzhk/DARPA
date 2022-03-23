@@ -14,6 +14,7 @@ def visualize(closure_mean, q_mean, dq_dy_mean, mu_f, yy, tau_inv, dir):
         ax[1].set_xlabel("q")
         ax[2].set_xlabel("dq_dy")
         ax[3].set_xlabel("mu")
-    plt.ylabel('yy')
+        ax[0].set_ylabel('yy')
+    # plt.ylabel('yy')
     plt.legend()
     plt.savefig(f'{dir}/data_vis.png')

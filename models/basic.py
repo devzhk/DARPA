@@ -53,7 +53,7 @@ class SpectralConv1d(nn.Module):
             x_ft[:, :, :self.modes1], self.weights1)
 
         # Return to physical space
-        x = torch.fft.irfft(out_ft, dim=2)
+        x = torch.fft.irfftn(out_ft, s=[x.size(-1)], dim=[2])
         return x
 
 ################################################################
