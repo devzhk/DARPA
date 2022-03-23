@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+
 from .helper import gradient_first_f2c, gradient_first_c2f, interpolate_f2c
 
 
@@ -35,8 +37,10 @@ def nummodel(model, q, yy):
     dy = yy[1] - yy[0]
     dq_c = gradient_first_f2c(q, dy)
     q_c = interpolate_f2c(q)
-
-    mu_c = model(q_c)
+    x = torch.tensor(q_c, dtype=torch.float32, device=torch.device('cuda:0'))
+    x = x.unsqueeze(-1).unsqueeze(0)
+    pred = model(x)
+    mu_c = pred.squeeze().cpu().numpy()
     # mu_c[mu_t >=0] = 0.0
     # mu_c[mu_t <=-0.1] = 0.0
 

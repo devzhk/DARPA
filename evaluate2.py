@@ -13,7 +13,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 beta = 1.0
 
 
-def point_jet(tau_inv, model):
+def point_jet(tau_inv, fno_model):
     print(f'test {tau_inv}')
 
     tau = 1 / tau_inv
@@ -35,8 +35,6 @@ def point_jet(tau_inv, model):
     q_mean_ref = np.mean(q[0, :, Nt // 2:], axis=1)
     w_mean_ref = np.mean(w[0, :, Nt // 2:], axis=1)
 
-    fno_model = partial(nummodel, model=model)
-
     dt, Nt, save_every = 1.0e-4, 200000, 1000
     yy, t_pred, q_pred = explicit_solve(fno_model, q_jet, tau, dt, Nt, save_every, L=L)
     q_mean_pred = np.mean(q_pred[Nt // (2 * save_every):, :], axis=0)
@@ -46,7 +44,7 @@ def point_jet(tau_inv, model):
 
 if __name__ == '__main__':
     N_y = 384
-    tau_invs = [0.04, 0.16]
+    tau_invs = [0.005, 0.06, 0.2]
     ckpt_path = 'ckpts/fno1d-nopad-final.pt'
     L = 4 * np.pi
     yy = np.linspace(-L / 2.0, L / 2.0, N_y)
@@ -58,10 +56,15 @@ if __name__ == '__main__':
                   fc_dim=fc_dim, in_dim=1, activation='tanh').to(device)
     ckpt = torch.load(ckpt_path)
     model.load_state_dict(ckpt)
-
-    for i in range(len(tau_invs)):
-        _, q_mean_ref, q_mean_pred, _ = point_jet(tau_invs[i], model)
-        plt.plot(q_mean_pred, yy, label='fit')
-        plt.plot(q_mean_ref, yy, label='truth')
-        plt.legend()
-        plt.savefig('figs/pre-result.png')
+    model.train()
+    fno_model = partial(nummodel, model)
+    with torch.no_grad():
+        for i in range(len(tau_invs)):
+            _, q_mean_ref, q_mean_pred, _ = point_jet(tau_invs[i], fno_model)
+            plt.plot(q_mean_pred, yy, label='fit', alpha=0.5)
+            plt.plot(q_mean_ref, yy, label='truth', alpha=0.5)
+            plt.xlabel('y')
+            plt.ylabel('q')
+            plt.legend()
+            plt.savefig(f'figs/pre-result-{i}.png')
+            plt.clf()
