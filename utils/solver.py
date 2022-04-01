@@ -25,7 +25,7 @@ def explicit_solve(model, q_jet, tau, dt=1.0, Nt=1000, save_every=1, L=4 * np.pi
 
         # (q^{n+1} - q^n)/dt = res + (q_jet - q^{n+1})/tau
         q[1:Ny - 1] = dt * tau / (dt + tau) * (q_jet[1:Ny - 1] / tau + res + q[1:Ny - 1] / dt)
-
+        assert np.isnan(q).any(), f'Nan occurs during at step {i}'
         if i % save_every == 0:
             q_data[i // save_every, :] = q
             t_data[i // save_every] = i * dt
@@ -37,7 +37,7 @@ def nummodel(model, q, yy):
     dy = yy[1] - yy[0]
     dq_c = gradient_first_f2c(q, dy)
     q_c = interpolate_f2c(q)
-    x = torch.tensor(q_c, dtype=torch.float32, device=torch.device('cuda:0'))
+    x = torch.tensor(q_c, dtype=torch.float32)
     x = x.unsqueeze(-1).unsqueeze(0)
     pred = model(x)
     mu_c = pred.squeeze().cpu().numpy()

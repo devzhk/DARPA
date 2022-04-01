@@ -9,6 +9,7 @@ import torch.nn.functional as F
 
 from models import FNO1d
 from utils.datasets import PointJet
+from utils.helper import count_params
 
 
 def train(dataloader, model, optimizer, scheduler, device=None):
@@ -16,7 +17,7 @@ def train(dataloader, model, optimizer, scheduler, device=None):
         device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # hyperparameters
     num_pad = 5
-    num_epoch = 2000
+    num_epoch = 1000
     # training
     pbar = tqdm(range(num_epoch), dynamic_ncols=True, smoothing=0.1)
     criterion = nn.MSELoss()
@@ -57,13 +58,15 @@ if __name__ == '__main__':
     dataset = PointJet(N_y, beta, tau_inv)
     dataloader = DataLoader(dataset, batch_size=batchsize, shuffle=True)
 
-    layers = [32, 32]
-    modes1 = [12, 12]
-    fc_dim = 32
+    layers = [4, 4]
+    modes1 = [2, 2]
+    fc_dim = 4
     model = FNO1d(modes1=modes1, layers=layers,
-                  fc_dim=fc_dim, in_dim=1, activation='tanh').to(device)
+                  fc_dim=fc_dim, in_dim=1, activation='relu').to(device)
+    print('number of parameters', count_params(model))
+
     optimizer = Adam(model.parameters(), lr=1e-3)
-    scheduler = MultiStepLR(optimizer, milestones=[300, 600, 900, 1200, 1500], gamma=0.5)
+    scheduler = MultiStepLR(optimizer, milestones=[300, 600, 900], gamma=0.5)
 
     train(dataloader, model, optimizer, scheduler, device=device)
 

@@ -49,14 +49,14 @@ if __name__ == '__main__':
     L = 4 * np.pi
     yy = np.linspace(-L / 2.0, L / 2.0, N_y)
 
-    layers = [32, 32]
-    modes1 = [12, 12]
-    fc_dim = 32
+    layers = [4, 4]
+    modes1 = [2, 2]
+    fc_dim = 4
     model = FNO1d(modes1=modes1, layers=layers,
-                  fc_dim=fc_dim, in_dim=1, activation='tanh').to(device)
-    ckpt = torch.load(ckpt_path)
+                  fc_dim=fc_dim, in_dim=1, activation='relu').to(device)
+    ckpt = torch.load(ckpt_path, map_location="cpu")
     model.load_state_dict(ckpt)
-    model.train()
+    model.eval()
     fno_model = partial(nummodel, model)
     with torch.no_grad():
         for i in range(len(tau_invs)):
@@ -66,5 +66,5 @@ if __name__ == '__main__':
             plt.xlabel('y')
             plt.ylabel('q')
             plt.legend()
-            plt.savefig(f'figs/pre-result-{i}.png')
+            plt.savefig(f'figs/pre-result-{tau_invs[i]}.png')
             plt.clf()

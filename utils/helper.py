@@ -117,3 +117,10 @@ def preprocess(N_y, beta, tau_inv):
     for i in range(N_data):
         mu_f[i, :] = scipy.ndimage.gaussian_filter1d(mu_f[i, :], 5)
     return closure_mean, q_mean, yy, dq_dy_mean, mu_f
+
+
+def count_params(model):
+    num_param = 0
+    for p in model.parameters():
+        num_param += p.numel()
+    return num_param

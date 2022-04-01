@@ -49,7 +49,7 @@ class FNO1d(nn.Module):
         elif activation == 'gelu':
             self.activation = F.gelu
         elif activation == 'relu':
-            self.activation == F.relu
+            self.activation = F.relu_
         else:
             raise ValueError(f'{activation} is not supported')
 
@@ -78,4 +78,4 @@ class FNO1d(nn.Module):
         x = self.fc1(x)
         x = self.activation(x)
         x = self.fc2(x)
-        return x
+        return self.activation(x)

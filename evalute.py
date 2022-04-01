@@ -50,14 +50,18 @@ def closure(fno, q, dy):
 
 
 if __name__ == '__main__':
-    tau = 10.0 # TBD
+
     beta = 1.0 # TBD
     N = 384
     layers = [32, 32]
     modes1 = [12, 12]
     fc_dim = 32
 
-    omega_path = 'data/test_data_w.mat'
+    tau_inv = 0.06
+    tau = 1 / tau_inv
+    data_dir = f'data/beta_1.0_Gamma_1.0_relax_{tau_inv}/'
+    # data_dir = 'data/'
+    omega_path = f'{data_dir}data_w.mat'
     w = scipy.io.loadmat(omega_path)
 
     omega_jet = np.zeros(N)
@@ -77,8 +81,10 @@ if __name__ == '__main__':
     with torch.no_grad():
         model = partial(closure, fno_model)
         t_data, q_data = explicit_solve(model, tau, q_jet, dy=dy,
-                                        dt = 0.001, Nt = 500000, save_every = 100)
+                                        dt = 0.001, Nt = 200000, save_every = 100)
     plt.plot(np.mean(q_data, axis=0), yy, label='fit')
     plt.plot(np.mean(w[0,:,:].T, axis=0) + yy, yy, label='truth')
+    plt.xlabel('y')
+    plt.ylabel('q')
     plt.legend()
-    plt.savefig('figs/result.png')
+    plt.savefig('figs/result-pad5.png')
