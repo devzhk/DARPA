@@ -81,13 +81,13 @@ def load_data_mean(data_dir):
     return closure_mean, q_mean, dq_dy_mean
 
 
-def preprocess(N_y, beta, tau_inv):
+def preprocess(beta, tau_inv, N_y=384):
     data_dirs = ["data/beta_1.0_Gamma_1.0_relax_" + str(tau_inv[i]) + "/" for i in range(len(tau_inv))]
 
     N_data = len(data_dirs)
     closure_mean, q_mean, dq_dy_mean = np.zeros((N_data, N_y)), np.zeros((N_data, N_y)), np.zeros((N_data, N_y))
     for i in range(N_data):
-        closure_mean[i, :], q_mean[i, :], dq_dy_mean[i, :] = load_data(data_dirs[i])
+        closure_mean[i, :], q_mean[i, :], dq_dy_mean[i, :] = load_data_mean(data_dirs[i])
 
     L = 4 * np.pi
     yy = np.linspace(-L / 2.0, L / 2.0, N_y)

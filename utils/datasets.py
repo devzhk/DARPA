@@ -4,7 +4,7 @@ import numpy as np
 import scipy.io
 import torch
 from torch.utils.data import Dataset
-from .helper import preprocess, load_data, interpolate_f2c, gradient_first_c2f
+from .helper import preprocess, load_data
 from .data import load_avg
 
 '''
@@ -31,6 +31,15 @@ def _load(path, tau_invs):
     return torch.tensor(closure_data.T, dtype=torch.float32), torch.tensor(q_data.T, dtype=torch.float32)
 
 
+def _interpolate(x):
+    x_c = (x[..., 0:-1] + x[..., 1:]) / 2
+    return x_c
+
+def _gradient_first(x, dy):
+    x_grad = (x[..., 1:] - x[..., 0:-1]) / dy
+    return x_grad
+
+
 class PointJet1D(Dataset):
     def __init__(self, datapath, tau_invs):
         super(PointJet1D, self).__init__()
@@ -51,11 +60,12 @@ class PointJetdy(Dataset):
         self.tau_invs = tau_invs
         self.datapath = datapath
         self.dy = dy
+        self.prepare()
 
     def prepare(self):
         closure, q = _load(self.datapath, self.tau_invs)
-        q_c = interpolate_f2c(q)
-        cls_dy = gradient_first_c2f(closure, self.dy)
+        q_c = _interpolate(q)
+        cls_dy = _gradient_first(closure, self.dy)
         self.q_c = q_c
         self.closure_dy = cls_dy
 
@@ -63,19 +73,21 @@ class PointJetdy(Dataset):
         return self.q_c[idx], self.closure_dy[idx]
 
     def __len__(self):
-        return self.q.shape[0]
+        return self.q_c.shape[0]
 
 
-class PointJet(Dataset):
-    def __init__(self, data_dir):
-        super(PointJet, self).__init__()
-        # closure_mean, q_mean, yy, dq_dy_mean, mu_f = preprocess(N_y, beta, tau_inv)
-        closure_new, q_new, dq_dy_new = load_data(data_dir)
-        self.X = torch.tensor(q_new, dtype=torch.float32)
-        self.Y = torch.tensor(closure_new, dtype=torch.float32)
+class PointJetdq(Dataset):
+    def __init__(self, data_dir, tau_invs):
+        super(PointJetdq, self).__init__()
+        closure_mean, q_mean, yy, dq_dy_mean, mu_f = preprocess(1, tau_invs)
+        # closure_new, q_new, dq_dy_new = load_data(data_dir)
+        q = torch.tensor(q_mean, dtype=torch.float32)
+        dq_dy = torch.tensor(dq_dy_mean, dtype=torch.float32)
+        self.feature = torch.stack([q, dq_dy], dim=-1)
+        self.mu_f = torch.tensor(mu_f, dtype=torch.float32)
 
     def __getitem__(self, item):
-        return self.X[:, item], self.Y[:, item]
+        return self.feature[item], self.mu_f[item]
 
     def __len__(self):
-        return self.X.shape[0]
+        return self.feature.shape[0]

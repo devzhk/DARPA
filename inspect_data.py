@@ -58,6 +58,9 @@ def load_data(data_dir):
 
 
 #%%
+
+L = 4 * np.pi
+dy = L / (384 - 1)
 tau_inv = 0.16
 data_dir = f'data/beta_1.0_Gamma_1.0_relax_{tau_inv}/'
 
@@ -166,17 +169,25 @@ plt.legend()
 plt.show()
 #
 # %%
-from utils.datasets import PointJet1D
+from utils.datasets import PointJet1D, PointJetdy, PointJetdq
+from utils.helper import gradient_first_f2c, interpolate_f2c
 #%%
 dataset = PointJet1D(datapath='data', tau_invs=[0.01, 0.02, 0.04, 0.08, 0.16, 0.06])
 #%%
-N_y = dataset[0][0].shape[0]
+N_y = 384
 L = 4 * np.pi
 yy = np.linspace(-L / 2.0, L / 2.0, N_y)
+#%%
+dy = L / (N_y - 1)
+dataset = PointJetdy(datapath='data', tau_invs=[0.02], dy=dy)
+#%%
+
+dataset = PointJetdq('data', [0.16])
+
 # %%
 
-closure = dataset[55][1]
-
+closure = dataset[0][1]
+yy_c = interpolate_f2c(yy)
 plt.plot(yy, closure)
 plt.xlabel('yy')
 plt.ylabel('closure * tau')
@@ -189,20 +200,4 @@ w = scipy.io.loadmat(data_dir + "data_w.mat")["data_w"]
 
 # %%
 w.shape
-# %%
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-# %%
-data = np.random.normal(loc=0.0, scale=0.1, size=3000)
-sns.kdeplot(data)
-plt.show()
-# %%
-data = np.random.normal(loc=0.0, scale=0.01, size=3000)
-sns.kdeplot(data)
-plt.show()
-# %%
-data = np.random.normal(loc=0.0, scale=0.001, size=3000)
-sns.kdeplot(data)
-plt.show()
 # %%
